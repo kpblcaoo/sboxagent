@@ -192,4 +192,4 @@ func TestSave(t *testing.T) {
 	assert.Equal(t, cfg.Server.Port, loadedCfg.Server.Port)
 	assert.Equal(t, cfg.Server.Host, loadedCfg.Server.Host)
 	assert.Equal(t, cfg.Server.Timeout, loadedCfg.Server.Timeout)
-} 
+}

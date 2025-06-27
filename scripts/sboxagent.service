@@ -1,0 +1,29 @@
+[Unit]
+Description=SboxAgent - sing-box proxy configuration manager
+Documentation=https://github.com/kpblcaoo/sboxagent
+After=network.target
+
+[Service]
+Type=simple
+User=sboxagent
+Group=sboxagent
+ExecStart=/usr/local/bin/sboxagent
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sboxagent
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/etc/sboxagent
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

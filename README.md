@@ -1,339 +1,309 @@
-# Subbox Agent (sboxagent)
+# SboxAgent
 
-A Go daemon for automatic subscription management, logging, and service monitoring in the Subbox ecosystem.
+[![Go Version](https://img.shields.io/badge/go-1.21+-blue.svg)](https://golang.org)
+[![License](https://img.shields.io/badge/license-GPL--3.0-green.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0--alpha-orange.svg)](VERSION)
 
-## 🎯 Purpose
+**SboxAgent** — это Go-демон для управления конфигурациями sing-box прокси, интегрированный с [sboxmgr](https://github.com/kpblcaoo/sboxmgr) — Python CLI-инструментом для управления подписками.
 
-Subbox Agent (`sboxagent`) is a lightweight Go daemon that provides:
+## 🚀 Возможности
 
-- **Automatic Updates** - Scheduled execution of Subbox Manager (`sboxctl`) commands
-- **Service Management** - Monitoring and control of VPN clients (sing-box, xray, clash, hysteria)
-- **Logging & Monitoring** - Structured logging with aggregation and health checks
-- **HTTP API** - REST API for configuration updates and status monitoring
-- **Security** - Sandboxed execution with configurable access controls
+- **Автоматическое управление sing-box**: мониторинг и обновление конфигураций
+- **Интеграция с sboxmgr**: получение обновлений через sboxctl
+- **Структурированное логирование**: JSON-формат, уровни логирования
+- **Event-driven архитектура**: асинхронная обработка событий
+- **Health monitoring**: проверка состояния компонентов
+- **Log aggregation**: сбор и анализ логов в памяти
+- **Systemd integration**: автоматический запуск и управление
+- **Security-first**: запуск под непривилегированным пользователем
 
-## 🏗 Architecture
+## 📋 Требования
+
+- **Go 1.21+** для сборки
+- **Linux** с systemd для установки
+- **sboxmgr** и **sboxctl** для интеграции
+- **sing-box** для управления прокси
+
+## 🏗️ Архитектура
 
 ```
-sboxagent/
-├── cmd/sboxagent/        # Main application entry point
-├── internal/             # Private application code
-│   ├── agent/           # Core agent logic
-│   ├── api/             # HTTP API handlers
-│   ├── config/          # Configuration management
-│   ├── logger/          # Structured logging
-│   ├── services/        # Service management
-│   └── security/        # Security and sandboxing
-├── pkg/                 # Public packages
-│   ├── schemas/         # Embedded JSON schemas
-│   └── protocols/       # API protocol definitions
-├── scripts/             # Build and deployment scripts
-├── examples/            # Configuration examples
-├── docs/                # Documentation
-└── tests/               # Test files
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   sboxctl       │    │   sing-box      │    │   sboxagent     │
+│   (sboxmgr)     │◄──►│   (proxy)       │◄──►│   (daemon)      │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                              │                        │
+                              ▼                        ▼
+                       ┌─────────────────┐    ┌─────────────────┐
+                       │   systemd       │    │   event         │
+                       │   service       │    │   dispatcher    │
+                       └─────────────────┘    └─────────────────┘
+                                                       │
+                                                       ▼
+                                              ┌─────────────────┐
+                                              │   log           │
+                                              │   aggregator    │
+                                              └─────────────────┘
 ```
 
-## 🚀 Quick Start
+### Основные компоненты
 
-### Installation
+- **Agent Core**: основной цикл жизни приложения
+- **Sboxctl Service**: мониторинг sboxctl команд
+- **Event Dispatcher**: асинхронная обработка событий
+- **Log Aggregator**: сбор и хранение логов
+- **Health Checker**: мониторинг состояния системы
+- **Configuration Manager**: загрузка и валидация конфигурации
+
+## 🛠️ Установка
+
+### Быстрая установка
 
 ```bash
-# Build from source
-go build -o sboxagent ./cmd/sboxagent
+# Клонировать репозиторий
+git clone https://github.com/kpblcaoo/sboxagent.git
+cd sboxagent
 
-# Or install directly
-go install ./cmd/sboxagent@latest
+# Собрать и установить
+make build
+sudo ./scripts/install.sh
 ```
 
-### Configuration
+### Ручная установка
 
-Create a configuration file `config.yaml`:
+```bash
+# 1. Собрать бинарник
+make build
+
+# 2. Создать пользователя и группу
+sudo useradd --system --no-create-home --shell /bin/false sboxagent
+sudo groupadd --system sboxagent
+sudo usermod -a -G sboxagent sboxagent
+
+# 3. Скопировать файлы
+sudo cp bin/sboxagent /usr/local/bin/
+sudo cp scripts/sboxagent.service /etc/systemd/system/
+
+# 4. Создать конфигурацию
+sudo mkdir -p /etc/sboxagent
+sudo cp examples/agent.yaml /etc/sboxagent/
+
+# 5. Запустить сервис
+sudo systemctl daemon-reload
+sudo systemctl enable sboxagent
+sudo systemctl start sboxagent
+```
+
+## ⚙️ Конфигурация
+
+Основной файл конфигурации: `/etc/sboxagent/agent.yaml`
 
 ```yaml
+# SboxAgent Configuration
 agent:
-  name: "home-server"
-  version: "0.1.0"
+  name: "sboxagent"
+  version: "0.1.0-alpha"
   log_level: "info"
+  log_format: "json"
 
-server:
-  port: 8080
-  host: "127.0.0.1"
-  timeout: "30s"
-
-services:
-  sboxctl:
-    enabled: true
-    command: ["sboxctl", "update"]
-    interval: "30m"
-    timeout: "5m"
-    stdout_capture: true
-    health_check:
-      enabled: true
-      interval: "1m"
-      timeout: "10s"
-
-clients:
-  sing-box:
-    enabled: true
-    binary_path: "/usr/local/bin/sing-box"
-    config_path: "/etc/sing-box/config.json"
-
-logging:
+# Sboxctl service configuration
+sboxctl:
+  command: ["sboxctl", "status"]
+  interval: "30s"
+  timeout: "10s"
   stdout_capture: true
-  aggregation: true
-  retention_days: 30
-  max_entries: 1000
-
-security:
-  allow_remote_api: false
-  api_token: "your-secure-token-here"
-  allowed_hosts: ["127.0.0.1", "::1"]
-  tls_enabled: false
-```
-
-### Running
-
-```bash
-# Start with configuration file
-./sboxagent -config config.yaml
-
-# Start with default settings
-./sboxagent
-
-# Run in foreground for debugging
-./sboxagent -debug
-```
-
-## 🔧 Configuration
-
-### Agent Settings
-
-- `name` - Agent identifier for logging and monitoring
-- `version` - Agent version for compatibility checks
-- `log_level` - Logging verbosity (debug, info, warn, error)
-
-### Server Configuration
-
-- `port` - HTTP API server port (1-65535)
-- `host` - Server bind address
-- `timeout` - Request timeout (e.g., "30s", "5m")
-
-### Service Management
-
-- `sboxctl.enabled` - Enable Subbox Manager integration
-- `sboxctl.command` - Command and arguments to execute
-- `sboxctl.interval` - Update frequency (e.g., "30m", "1h")
-- `sboxctl.timeout` - Command execution timeout
-- `sboxctl.health_check` - Health monitoring settings
-
-### VPN Client Support
-
-Supported clients with automatic configuration management:
-
-- **sing-box** - Universal proxy platform
-- **xray** - Xray-core proxy
-- **clash** - Clash proxy
-- **hysteria** - Hysteria proxy
-
-Each client can be enabled/disabled and configured with custom paths.
-
-### Security Settings
-
-- `allow_remote_api` - Allow external API access
-- `api_token` - Authentication token for API requests
-- `allowed_hosts` - List of permitted client IPs
-- `tls_enabled` - Enable TLS encryption
-- `tls_cert_file` - TLS certificate path
-- `tls_key_file` - TLS private key path
-
-## 🌐 HTTP API
-
-### Endpoints
-
-- `GET /api/v1/status` - Get agent status and health
-- `POST /api/v1/config` - Update agent configuration
-- `GET /api/v1/logs` - Retrieve aggregated logs
-- `GET /api/v1/health` - Health check endpoint
-
-### Authentication
-
-API requests require authentication via:
-- `Authorization: Bearer <api_token>` header
-- Or `X-API-Token: <api_token>` header
-
-### Example Requests
-
-```bash
-# Get status
-curl -H "Authorization: Bearer your-token" \
-     http://localhost:8080/api/v1/status
-
-# Update configuration
-curl -X POST \
-     -H "Authorization: Bearer your-token" \
-     -H "Content-Type: application/json" \
-     -d @config.json \
-     http://localhost:8080/api/v1/config
-```
-
-## 📊 Monitoring
-
-### Health Checks
-
-- **Agent Health** - Overall daemon status
-- **Service Health** - Managed service status
-- **API Health** - HTTP endpoint availability
-- **Resource Usage** - Memory and CPU monitoring
-
-### Logging
-
-- **Structured Logs** - JSON format with metadata
-- **Log Aggregation** - Centralized log collection
-- **Retention Policy** - Configurable log retention
-- **Log Levels** - Debug, info, warn, error levels
-
-### Metrics
-
-- **Service Uptime** - Service availability tracking
-- **Update Success Rate** - Command execution statistics
-- **API Request Metrics** - Request/response statistics
-- **Resource Metrics** - System resource utilization
-
-## 🔒 Security
-
-### Sandboxing
-
-- **Process Isolation** - Commands run in isolated environment
-- **Resource Limits** - CPU and memory constraints
-- **File System Access** - Restricted file system access
-- **Network Access** - Controlled network connectivity
-
-### Access Control
-
-- **API Authentication** - Token-based authentication
-- **IP Whitelisting** - Configurable client IP restrictions
-- **TLS Encryption** - Optional transport encryption
-- **Audit Logging** - Security event logging
-
-## 🧪 Development
-
-### Building
-
-```bash
-# Build for current platform
-go build -o sboxagent ./cmd/sboxagent
-
-# Build for specific platform
-GOOS=linux GOARCH=amd64 go build -o sboxagent ./cmd/sboxagent
-
-# Build with debug symbols
-go build -gcflags="all=-N -l" -o sboxagent ./cmd/sboxagent
-```
-
-### Testing
-
-```bash
-# Run all tests
-go test ./...
-
-# Run with coverage
-go test -cover ./...
-
-# Run integration tests
-go test -tags=integration ./...
-```
-
-### Development Mode
-
-```bash
-# Run with hot reload (requires air)
-air
-
-# Run with debug logging
-./sboxagent -debug -log-level=debug
-
-# Run with custom config
-./sboxagent -config dev-config.yaml
-```
-
-## 📦 Deployment
-
-### Systemd Service
-
-Create `/etc/systemd/system/sboxagent.service`:
-
-```ini
-[Unit]
-Description=Subbox Agent
-After=network.target
-
-[Service]
-Type=simple
-User=sboxagent
-Group=sboxagent
-ExecStart=/usr/local/bin/sboxagent -config /etc/sboxagent/config.yaml
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-### Docker
-
-```dockerfile
-FROM golang:1.21-alpine AS builder
-WORKDIR /app
-COPY . .
-RUN go build -o sboxagent ./cmd/sboxagent
-
-FROM alpine:latest
-RUN addgroup -g 1000 sboxagent && \
-    adduser -D -s /bin/sh -u 1000 -G sboxagent sboxagent
-COPY --from=builder /app/sboxagent /usr/local/bin/
-USER sboxagent
-EXPOSE 8080
-ENTRYPOINT ["sboxagent"]
-```
-
-## 🔗 Integration
-
-### With Subbox Manager (sboxctl)
-
-sboxagent integrates with Subbox Manager for automatic updates:
-
-```yaml
-services:
-  sboxctl:
+  health_check:
     enabled: true
-    command: ["sboxctl", "update", "--auto"]
-    interval: "30m"
+    interval: "60s"
+
+# Log aggregator configuration
+aggregator:
+  max_entries: 1000
+  max_age: "24h"
+
+# Health checker configuration
+health:
+  check_interval: "30s"
+  timeout: "5s"
 ```
 
-### With Monitoring Systems
+## 🚀 Использование
 
-- **Prometheus** - Metrics endpoint at `/metrics`
-- **Grafana** - Pre-built dashboards available
-- **AlertManager** - Alerting integration
-- **ELK Stack** - Log aggregation support
+### Команды
 
-## 📚 Documentation
+```bash
+# Показать версию
+sboxagent -version
 
-- [Configuration Reference](docs/configuration.md)
-- [API Reference](docs/api.md)
-- [Security Guide](docs/security.md)
-- [Deployment Guide](docs/deployment.md)
-- [Troubleshooting](docs/troubleshooting.md)
+# Запуск с дефолтной конфигурацией
+sboxagent
 
-## 🤝 Contributing
+# Запуск с кастомной конфигурацией
+sboxagent -config /path/to/config.yaml
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Ensure all tests pass
-6. Submit a pull request
+# Debug режим
+sboxagent -debug
 
-## 📄 License
+# Изменить уровень логирования
+sboxagent -log-level debug
+```
 
-GPL-3.0 - see [LICENSE](LICENSE) file. 
+### Управление сервисом
+
+```bash
+# Статус сервиса
+sudo systemctl status sboxagent
+
+# Запуск/остановка
+sudo systemctl start sboxagent
+sudo systemctl stop sboxagent
+
+# Перезапуск
+sudo systemctl restart sboxagent
+
+# Просмотр логов
+sudo journalctl -u sboxagent -f
+```
+
+### Удаление
+
+```bash
+# Удалить сервис и бинарник
+sudo ./scripts/uninstall.sh
+
+# Удалить конфигурацию (опционально)
+# Скрипт спросит о удалении конфига и пользователя
+```
+
+## 🧪 Разработка
+
+### Сборка
+
+```bash
+# Обычная сборка
+make build
+
+# Сборка для Linux
+make build-linux
+
+# Очистка
+make clean
+```
+
+### Тестирование
+
+```bash
+# Запуск тестов
+make test
+
+# Тесты с покрытием
+make test-coverage
+
+# Интеграционные тесты
+make test-integration
+
+# Бенчмарки
+make benchmark
+```
+
+### Качество кода
+
+```bash
+# Форматирование
+make fmt
+
+# Линтинг
+make lint
+
+# Полная проверка
+make check
+```
+
+### Документация
+
+```bash
+# Генерация документации
+make docs
+
+# Проверка покрытия докстрингами
+make docs-check
+
+# Локальный сервер документации
+make docs-serve
+```
+
+## 📚 Документация
+
+- [Архитектура](docs/README.md) — техническая документация
+- [Планы разработки](plans/) — roadmap и задачи
+- [Правила](.cursor/rules/) — coding standards и best practices
+- [Тесты](tests/) — unit и integration тесты
+
+## 🔧 Troubleshooting
+
+### Сервис не запускается
+
+```bash
+# Проверить статус
+sudo systemctl status sboxagent
+
+# Посмотреть логи
+sudo journalctl -u sboxagent -n 50
+
+# Проверить конфигурацию
+sboxagent -config /etc/sboxagent/agent.yaml -debug
+```
+
+### sboxctl не найден
+
+Убедитесь, что sboxmgr и sboxctl установлены и доступны в PATH:
+
+```bash
+# Проверить установку sboxmgr
+which sboxctl
+
+# Установить sboxmgr (если не установлен)
+pip install sboxmgr
+```
+
+### Проблемы с правами
+
+```bash
+# Проверить права пользователя
+ls -la /usr/local/bin/sboxagent
+ls -la /etc/sboxagent/
+
+# Исправить права
+sudo chown sboxagent:sboxagent /usr/local/bin/sboxagent
+sudo chown -R sboxagent:sboxagent /etc/sboxagent/
+```
+
+## 🤝 Вклад в проект
+
+1. Fork репозитория
+2. Создайте feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit изменения (`git commit -m 'Add amazing feature'`)
+4. Push в branch (`git push origin feature/amazing-feature`)
+5. Откройте Pull Request
+
+### Требования к коду
+
+- Следуйте [правилам](.cursor/rules/) проекта
+- Добавляйте тесты для новой функциональности
+- Обновляйте документацию
+- Используйте conventional commits
+
+## 📄 Лицензия
+
+Этот проект лицензирован под GPL-3.0 — см. файл [LICENSE](LICENSE) для деталей.
+
+## 🔗 Ссылки
+
+- [sboxmgr](https://github.com/kpblcaoo/sboxmgr) — Python CLI для управления подписками
+- [sing-box](https://github.com/SagerNet/sing-box) — универсальный прокси-инструмент
+- [Планы разработки](plans/) — roadmap и задачи проекта
+
+---
+
+**Версия**: 0.1.0-alpha  
+**Последнее обновление**: 2025-06-27  
+**Поддерживаемые платформы**: Linux (systemd) 
