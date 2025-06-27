@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.subbox.dev/api.schema.json",
+  "version": "1.0.0",
+  "$comment": "API protocol version for compatibility tracking",
+  "title": "Subbox HTTP API Protocol Schema",
+  "description": "HTTP API protocol schema for communication between sboxctl and sboxagent",
+  "type": "object",
+  "definitions": {
+    "base_request": {
+      "type": "object",
+      "properties": {
+        "trace_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+          "description": "Unique request identifier for tracing"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Request timestamp in ISO 8601 format"
+        }
+      },
+      "required": ["trace_id", "timestamp"]
+    },
+    "base_response": {
+      "type": "object",
+      "properties": {
+        "trace_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+          "description": "Request identifier for tracing"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Response timestamp in ISO 8601 format"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Request success status"
+        },
+        "error_code": {
+          "type": "string",
+          "enum": [
+            "OK",
+            "INVALID_REQUEST",
+            "SERVICE_UNAVAILABLE",
+            "TIMEOUT",
+            "PERMISSION_DENIED",
+            "NOT_FOUND",
+            "INTERNAL_ERROR"
+          ],
+          "description": "Error code if success is false"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Human-readable error message"
+        }
+      },
+      "required": ["trace_id", "timestamp", "success"]
+    }
+  },
+  "properties": {
+    "requests": {
+      "type": "object",
+      "description": "API request schemas",
+      "properties": {
+        "update_config": {
+          "allOf": [
+            { "$ref": "#/definitions/base_request" },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "update_config",
+                  "description": "Action type"
+                },
+                "protocol_version": {
+                  "type": "string",
+                  "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                  "default": "1.0.0",
+                  "description": "Protocol version for compatibility"
+                },
+                "config": {
+                  "$ref": "https://schemas.subbox.dev/agent_config.schema.json",
+                  "description": "Agent configuration data from sboxctl"
+                }
+              },
+              "required": ["action", "config"]
+            }
+          ]
+        },
+        "update_config": {
+          "allOf": [
+            { "$ref": "#/definitions/base_request" },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "update_config",
+                  "description": "Action type"
+                },
+                "protocol_version": {
+                  "type": "string",
+                  "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                  "default": "1.0.0",
+                  "description": "Protocol version for compatibility"
+                },
+                "config": {
+                  "$ref": "https://schemas.subbox.dev/agent_config.schema.json",
+                  "description": "Agent configuration data from sboxctl"
+                }
+              },
+              "required": ["action", "config"]
+            }
+          ]
+        }
+      }
+    }
+  }
+} 

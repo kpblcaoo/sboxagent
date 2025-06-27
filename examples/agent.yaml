@@ -1,0 +1,59 @@
+# Subbox Agent Configuration Example
+# This file demonstrates a typical configuration for sboxagent daemon
+
+agent:
+  name: "home-server"
+  version: "0.1.0"
+  log_level: "info"
+
+server:
+  port: 8080
+  host: "127.0.0.1"
+  timeout: "30s"
+
+services:
+  sboxctl:
+    enabled: true
+    command: ["sboxctl", "update"]
+    interval: "30m"
+    timeout: "5m"
+    stdout_capture: true
+    health_check:
+      enabled: true
+      interval: "1m"
+      timeout: "10s"
+
+clients:
+  sing-box:
+    enabled: true
+    binary_path: "/usr/local/bin/sing-box"
+    config_path: "/etc/sing-box/config.json"
+  
+  xray:
+    enabled: false
+    binary_path: "/usr/local/bin/xray"
+    config_path: "/etc/xray/config.json"
+  
+  clash:
+    enabled: false
+    binary_path: "/usr/local/bin/clash"
+    config_path: "/etc/clash/config.yaml"
+
+  hysteria:
+    enabled: false
+    binary_path: "/usr/local/bin/hysteria"
+    config_path: "/etc/hysteria/config.json"
+
+logging:
+  stdout_capture: true
+  aggregation: true
+  retention_days: 30
+  max_entries: 1000
+
+security:
+  allow_remote_api: false
+  api_token: "your-secure-token-here"
+  allowed_hosts: ["127.0.0.1", "::1"]
+  tls_enabled: false
+  # tls_cert_file: "/path/to/cert.pem"
+  # tls_key_file: "/path/to/key.pem" 
