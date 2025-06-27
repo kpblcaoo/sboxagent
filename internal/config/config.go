@@ -158,6 +158,7 @@ func Load(configPath string) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 	// Agent defaults
 	v.SetDefault("agent.name", "sboxagent")
+	v.SetDefault("agent.version", "0.1.0")
 	v.SetDefault("agent.log_level", "info")
 
 	// Server defaults

@@ -334,9 +334,12 @@ func (s *SboxctlService) GetEventChannel() <-chan SboxctlEvent {
 	return s.eventChan
 }
 
-// parseDuration parses a duration string (e.g., "30m", "5m", "10s")
+// parseDuration parses a duration string (e.g., "30m", "5m", "10s", "1m30s")
 func parseDuration(duration string) (time.Duration, error) {
-	// Handle common formats
+	if d, err := time.ParseDuration(duration); err == nil {
+		return d, nil
+	}
+	// Fallback: handle only pure integer + unit (legacy)
 	switch {
 	case strings.HasSuffix(duration, "s"):
 		val, err := strconv.Atoi(strings.TrimSuffix(duration, "s"))
@@ -357,6 +360,6 @@ func parseDuration(duration string) (time.Duration, error) {
 		}
 		return time.Duration(val) * time.Hour, nil
 	default:
-		return time.ParseDuration(duration)
+		return 0, fmt.Errorf("invalid duration: %s", duration)
 	}
 } 
