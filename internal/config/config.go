@@ -33,7 +33,10 @@ type ServerConfig struct {
 
 // ServicesConfig represents service management configuration
 type ServicesConfig struct {
-	Sboxctl SboxctlConfig `mapstructure:"sboxctl"`
+	Sboxctl    SboxctlConfig `mapstructure:"sboxctl"`
+	CLI        CLIConfig     `mapstructure:"cli"`
+	Systemd    SystemdConfig `mapstructure:"systemd"`
+	Monitoring MonitorConfig `mapstructure:"monitoring"`
 }
 
 // SboxctlConfig represents sboxctl service configuration
@@ -53,11 +56,37 @@ type HealthCheckConfig struct {
 	Timeout  string `mapstructure:"timeout"`
 }
 
+// CLIConfig represents CLI service configuration
+type CLIConfig struct {
+	Enabled       bool   `mapstructure:"enabled"`
+	SboxmgrPath   string `mapstructure:"sboxmgr_path"`
+	Timeout       string `mapstructure:"timeout"`
+	MaxRetries    int    `mapstructure:"max_retries"`
+	RetryInterval string `mapstructure:"retry_interval"`
+}
+
+// SystemdConfig represents systemd service configuration
+type SystemdConfig struct {
+	Enabled     bool   `mapstructure:"enabled"`
+	ServiceName string `mapstructure:"service_name"`
+	UserMode    bool   `mapstructure:"user_mode"`
+	AutoStart   bool   `mapstructure:"auto_start"`
+}
+
+// MonitorConfig represents monitoring configuration
+type MonitorConfig struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	Interval       string `mapstructure:"interval"`
+	MetricsEnabled bool   `mapstructure:"metrics_enabled"`
+	AlertsEnabled  bool   `mapstructure:"alerts_enabled"`
+	RetentionDays  int    `mapstructure:"retention_days"`
+}
+
 // ClientsConfig represents VPN client configuration
 type ClientsConfig struct {
-	SingBox SingBoxConfig `mapstructure:"sing-box"`
-	Xray    XrayConfig    `mapstructure:"xray"`
-	Clash   ClashConfig   `mapstructure:"clash"`
+	SingBox  SingBoxConfig  `mapstructure:"sing-box"`
+	Xray     XrayConfig     `mapstructure:"xray"`
+	Clash    ClashConfig    `mapstructure:"clash"`
 	Hysteria HysteriaConfig `mapstructure:"hysteria"`
 }
 
@@ -176,6 +205,26 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("services.sboxctl.health_check.interval", "1m")
 	v.SetDefault("services.sboxctl.health_check.timeout", "10s")
 
+	// CLI defaults
+	v.SetDefault("services.cli.enabled", true)
+	v.SetDefault("services.cli.sboxmgr_path", "sboxmgr")
+	v.SetDefault("services.cli.timeout", "30s")
+	v.SetDefault("services.cli.max_retries", 3)
+	v.SetDefault("services.cli.retry_interval", "5s")
+
+	// Systemd defaults
+	v.SetDefault("services.systemd.enabled", true)
+	v.SetDefault("services.systemd.service_name", "sboxagent")
+	v.SetDefault("services.systemd.user_mode", false)
+	v.SetDefault("services.systemd.auto_start", true)
+
+	// Monitoring defaults
+	v.SetDefault("services.monitoring.enabled", true)
+	v.SetDefault("services.monitoring.interval", "30s")
+	v.SetDefault("services.monitoring.metrics_enabled", true)
+	v.SetDefault("services.monitoring.alerts_enabled", true)
+	v.SetDefault("services.monitoring.retention_days", 30)
+
 	// Clients defaults
 	v.SetDefault("clients.sing-box.enabled", true)
 	v.SetDefault("clients.sing-box.binary_path", "/usr/local/bin/sing-box")
@@ -233,7 +282,7 @@ func validateConfig(cfg *Config) error {
 // Save saves configuration to file
 func (c *Config) Save(path string) error {
 	v := viper.New()
-	
+
 	// Convert config back to map
 	if err := v.MergeConfigMap(map[string]interface{}{
 		"agent":    c.Agent,
@@ -253,4 +302,4 @@ func (c *Config) Save(path string) error {
 	}
 
 	return v.WriteConfigAs(path)
-} 
+}

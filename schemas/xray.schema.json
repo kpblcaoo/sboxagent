@@ -1,0 +1,393 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.subbox.dev/xray.schema.json",
+  "version": "1.0.0",
+  "title": "Xray Configuration Schema",
+  "description": "Schema for Xray client configuration validation",
+  "type": "object",
+  "properties": {
+    "log": {
+      "type": "object",
+      "properties": {
+        "loglevel": {
+          "type": "string",
+          "enum": ["debug", "info", "warning", "error"],
+          "default": "warning",
+          "description": "Log level"
+        },
+        "access": {
+          "type": "string",
+          "description": "Access log file path"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error log file path"
+        }
+      }
+    },
+    "inbounds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "Inbound tag"
+          },
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535,
+            "description": "Listen port"
+          },
+          "listen": {
+            "type": "string",
+            "default": "127.0.0.1",
+            "description": "Listen address"
+          },
+          "protocol": {
+            "type": "string",
+            "enum": ["http", "socks", "dokodemo-door", "vmess", "vless", "trojan", "shadowsocks"],
+            "description": "Inbound protocol"
+          },
+          "settings": {
+            "type": "object",
+            "description": "Protocol-specific settings"
+          },
+          "sniffing": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": true
+              },
+              "destOverride": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["http", "tls"]
+                }
+              }
+            }
+          },
+          "streamSettings": {
+            "type": "object",
+            "properties": {
+              "network": {
+                "type": "string",
+                "enum": ["tcp", "kcp", "ws", "http", "quic"],
+                "default": "tcp"
+              },
+              "security": {
+                "type": "string",
+                "enum": ["none", "tls"],
+                "default": "none"
+              },
+              "tlsSettings": {
+                "type": "object",
+                "properties": {
+                  "serverName": {
+                    "type": "string"
+                  },
+                  "allowInsecure": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "alpn": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "wsSettings": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "headers": {
+                    "type": "object"
+                  }
+                }
+              },
+              "httpSettings": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "host": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "required": ["port", "protocol"]
+      }
+    },
+    "outbounds": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "tag": {
+            "type": "string",
+            "description": "Outbound tag"
+          },
+          "protocol": {
+            "type": "string",
+            "enum": ["vmess", "vless", "trojan", "shadowsocks", "freedom", "blackhole", "dns"],
+            "description": "Outbound protocol"
+          },
+          "settings": {
+            "type": "object",
+            "description": "Protocol-specific settings"
+          },
+          "streamSettings": {
+            "type": "object",
+            "properties": {
+              "network": {
+                "type": "string",
+                "enum": ["tcp", "kcp", "ws", "http", "quic"],
+                "default": "tcp"
+              },
+              "security": {
+                "type": "string",
+                "enum": ["none", "tls"],
+                "default": "none"
+              },
+              "tlsSettings": {
+                "type": "object",
+                "properties": {
+                  "serverName": {
+                    "type": "string"
+                  },
+                  "allowInsecure": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "alpn": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "wsSettings": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "headers": {
+                    "type": "object"
+                  }
+                }
+              },
+              "httpSettings": {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string"
+                  },
+                  "host": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "mux": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": false
+              },
+              "concurrency": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1024,
+                "default": 8
+              }
+            }
+          }
+        },
+        "required": ["protocol"]
+      }
+    },
+    "routing": {
+      "type": "object",
+      "properties": {
+        "domainStrategy": {
+          "type": "string",
+          "enum": ["AsIs", "IPIfNonMatch", "IPOnDemand"],
+          "default": "AsIs",
+          "description": "Domain resolution strategy"
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["field"],
+                "default": "field"
+              },
+              "domain": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Domain matching rules"
+              },
+              "ip": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "IP matching rules"
+              },
+              "port": {
+                "type": "string",
+                "description": "Port range"
+              },
+              "sourcePort": {
+                "type": "string",
+                "description": "Source port range"
+              },
+              "network": {
+                "type": "string",
+                "enum": ["tcp", "udp", "tcp,udp"],
+                "description": "Network protocol"
+              },
+              "source": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Source IP addresses"
+              },
+              "user": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "User email addresses"
+              },
+              "inboundTag": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Inbound tags"
+              },
+              "protocol": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Protocol names"
+              },
+              "outboundTag": {
+                "type": "string",
+                "description": "Outbound tag"
+              },
+              "balancerTag": {
+                "type": "string",
+                "description": "Balancer tag"
+              }
+            }
+          }
+        },
+        "balancers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "tag": {
+                "type": "string",
+                "description": "Balancer tag"
+              },
+              "selector": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Outbound tags to balance"
+              },
+              "strategy": {
+                "type": "string",
+                "enum": ["random", "leastPing"],
+                "default": "random",
+                "description": "Load balancing strategy"
+              }
+            },
+            "required": ["tag", "selector"]
+          }
+        }
+      }
+    },
+    "dns": {
+      "type": "object",
+      "properties": {
+        "servers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "DNS server address"
+              },
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535,
+                "default": 53,
+                "description": "DNS server port"
+              },
+              "domains": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Domain list for this server"
+              },
+              "skipFallback": {
+                "type": "boolean",
+                "default": false,
+                "description": "Skip fallback to other servers"
+              }
+            },
+            "required": ["address"]
+          }
+        },
+        "hosts": {
+          "type": "object",
+          "description": "Host to IP mapping"
+        },
+        "clientIp": {
+          "type": "string",
+          "description": "Client IP for DNS queries"
+        },
+        "tag": {
+          "type": "string",
+          "description": "DNS tag"
+        }
+      }
+    }
+  }
+} 

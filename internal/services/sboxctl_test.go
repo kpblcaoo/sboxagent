@@ -7,6 +7,7 @@ import (
 
 	"github.com/kpblcaoo/sboxagent/internal/config"
 	"github.com/kpblcaoo/sboxagent/internal/logger"
+	"github.com/kpblcaoo/sboxagent/internal/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -50,7 +51,7 @@ func TestParseDuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			duration, err := parseDuration(tt.input)
+			duration, err := utils.ParseDuration(tt.input)
 			if tt.hasError {
 				assert.Error(t, err)
 			} else {
@@ -225,4 +226,4 @@ func TestSboxctlService_GetEventChannel(t *testing.T) {
 	// Channel should be buffered - we can't test sending to receive-only channel
 	// but we can verify it's not nil and has the right type
 	assert.IsType(t, (<-chan SboxctlEvent)(nil), eventChan)
-} 
+}

@@ -1,0 +1,234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.subbox.dev/interface/sboxmgr-agent.schema.json",
+  "version": "1.0.0",
+  "title": "Sboxmgr-Agent Interface Protocol",
+  "description": "JSON interface protocol for communication between sboxmgr and sboxagent via exec() calls",
+  "type": "object",
+  "definitions": {
+    "base_request": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+          "description": "Unique request identifier for tracing"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Request timestamp in ISO 8601 format"
+        },
+        "protocol_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "default": "1.0.0",
+          "description": "Interface protocol version"
+        }
+      },
+      "required": ["request_id", "timestamp", "protocol_version"]
+    },
+    "base_response": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$",
+          "description": "Request identifier for tracing"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Response timestamp in ISO 8601 format"
+        },
+        "success": {
+          "type": "boolean",
+          "description": "Request success status"
+        },
+        "error_code": {
+          "type": "string",
+          "enum": [
+            "OK",
+            "INVALID_REQUEST",
+            "CONFIGURATION_ERROR",
+            "CLIENT_NOT_FOUND",
+            "CLIENT_ERROR",
+            "PERMISSION_DENIED",
+            "TIMEOUT",
+            "INTERNAL_ERROR"
+          ],
+          "description": "Error code if success is false"
+        },
+        "error_message": {
+          "type": "string",
+          "description": "Human-readable error message"
+        },
+        "protocol_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Interface protocol version"
+        }
+      },
+      "required": ["request_id", "timestamp", "success", "protocol_version"]
+    }
+  },
+  "properties": {
+    "requests": {
+      "type": "object",
+      "description": "Request schemas for sboxmgr to sboxagent",
+      "properties": {
+        "generate_config": {
+          "allOf": [
+            { "$ref": "#/definitions/base_request" },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "generate_config",
+                  "description": "Action type"
+                },
+                "subscription_url": {
+                  "type": "string",
+                  "format": "uri",
+                  "description": "Subscription URL to fetch servers from"
+                },
+                "client_type": {
+                  "type": "string",
+                  "enum": ["sing-box", "clash", "xray", "mihomo"],
+                  "description": "Target client type"
+                },
+                "client_version": {
+                  "type": "string",
+                  "pattern": "^\\d+\\.\\d+\\.\\d+$",
+                  "description": "Client version for compatibility"
+                },
+                "options": {
+                  "type": "object",
+                  "properties": {
+                    "exclude_servers": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Server names or patterns to exclude"
+                    },
+                    "include_servers": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Server names or patterns to include"
+                    },
+                    "routing_rules": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Custom routing rules"
+                    },
+                    "dns_servers": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Custom DNS servers"
+                    }
+                  }
+                }
+              },
+              "required": ["action", "subscription_url", "client_type"]
+            }
+          ]
+        },
+        "validate_config": {
+          "allOf": [
+            { "$ref": "#/definitions/base_request" },
+            {
+              "type": "object",
+              "properties": {
+                "action": {
+                  "type": "string",
+                  "const": "validate_config",
+                  "description": "Action type"
+                },
+                "config_data": {
+                  "type": "object",
+                  "description": "Configuration data to validate"
+                },
+                "client_type": {
+                  "type": "string",
+                  "enum": ["sing-box", "clash", "xray", "mihomo"],
+                  "description": "Client type for validation"
+                }
+              },
+              "required": ["action", "config_data", "client_type"]
+            }
+          ]
+        }
+      }
+    },
+    "responses": {
+      "type": "object",
+      "description": "Response schemas from sboxagent to sboxmgr",
+      "properties": {
+        "generate_config": {
+          "allOf": [
+            { "$ref": "#/definitions/base_response" },
+            {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "config": {
+                      "type": "object",
+                      "description": "Generated configuration data"
+                    },
+                    "metadata": {
+                      "type": "object",
+                      "properties": {
+                        "source": {"type": "string"},
+                        "generator": {"type": "string"},
+                        "checksum": {"type": "string"},
+                        "subscription_info": {
+                          "type": "object",
+                          "properties": {
+                            "total_servers": {"type": "integer"},
+                            "filtered_servers": {"type": "integer"},
+                            "excluded_servers": {"type": "integer"}
+                          }
+                        }
+                      }
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {"type": "string"},
+                      "description": "Warning messages"
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "validate_config": {
+          "allOf": [
+            { "$ref": "#/definitions/base_response" },
+            {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "valid": {"type": "boolean"},
+                    "errors": {
+                      "type": "array",
+                      "items": {"type": "string"}
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {"type": "string"}
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+} 
