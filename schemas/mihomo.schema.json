@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.subbox.dev/mihomo.schema.json",
+  "version": "1.0.0",
+  "title": "Mihomo Configuration Schema",
+  "description": "Schema for Mihomo (Clash fork) client configuration validation",
+  "type": "object",
+  "properties": {
+    "port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "default": 7890,
+      "description": "HTTP proxy port"
+    },
+    "socks-port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "default": 7891,
+      "description": "SOCKS5 proxy port"
+    },
+    "mixed-port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "Mixed proxy port"
+    },
+    "allow-lan": {
+      "type": "boolean",
+      "default": false,
+      "description": "Allow connections from LAN"
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["rule", "global", "direct"],
+      "default": "rule",
+      "description": "Proxy mode"
+    },
+    "log-level": {
+      "type": "string",
+      "enum": ["info", "warning", "error", "debug", "silent"],
+      "default": "info",
+      "description": "Log level"
+    },
+    "external-controller": {
+      "type": "string",
+      "default": "127.0.0.1:9090",
+      "description": "External controller address"
+    },
+    "secret": {
+      "type": "string",
+      "description": "Secret for external controller"
+    },
+    "proxies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "type": {
+            "type": "string",
+            "enum": ["ss", "ssr", "vmess", "trojan", "snell", "http", "socks5", "hysteria", "tuic"]
+          },
+          "server": {"type": "string"},
+          "port": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "cipher": {"type": "string"},
+          "password": {"type": "string"},
+          "uuid": {"type": "string"},
+          "alterId": {"type": "integer"},
+          "tls": {"type": "boolean"},
+          "skip-cert-verify": {"type": "boolean"},
+          "servername": {"type": "string"},
+          "network": {
+            "type": "string",
+            "enum": ["tcp", "ws", "http", "quic"]
+          },
+          "ws-opts": {
+            "type": "object",
+            "properties": {
+              "path": {"type": "string"},
+              "headers": {"type": "object"}
+            }
+          },
+          "http-opts": {
+            "type": "object",
+            "properties": {
+              "method": {"type": "string"},
+              "path": {"type": "array", "items": {"type": "string"}},
+              "headers": {"type": "object"}
+            }
+          },
+          "hysteria-opts": {
+            "type": "object",
+            "properties": {
+              "protocol": {"type": "string"},
+              "up": {"type": "string"},
+              "down": {"type": "string"},
+              "auth": {"type": "string"},
+              "auth_str": {"type": "string"},
+              "obfs": {"type": "string"},
+              "obfs-password": {"type": "string"}
+            }
+          },
+          "tuic-opts": {
+            "type": "object",
+            "properties": {
+              "uuid": {"type": "string"},
+              "password": {"type": "string"},
+              "udp-relay-mode": {"type": "string"},
+              "congestion-controller": {"type": "string"},
+              "max-open-streams": {"type": "integer"}
+            }
+          }
+        },
+        "required": ["name", "type", "server", "port"]
+      }
+    },
+    "proxy-groups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "type": {
+            "type": "string",
+            "enum": ["select", "url-test", "fallback", "load-balance", "relay"]
+          },
+          "proxies": {"type": "array", "items": {"type": "string"}},
+          "url": {"type": "string"},
+          "interval": {"type": "integer"},
+          "tolerance": {"type": "integer"},
+          "use": {"type": "array", "items": {"type": "string"}}
+        },
+        "required": ["name", "type", "proxies"]
+      }
+    },
+    "rules": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  }
+} 

@@ -15,15 +15,18 @@ import (
 type Agent struct {
 	config *config.Config
 	logger *logger.Logger
-	
+
 	// Services
 	sboxctlService *services.SboxctlService
-	
+	cliService     *services.CLIService
+	systemdService *services.SystemdService
+	monitorService *services.MonitorService
+
 	// State
-	mu       sync.RWMutex
-	running  bool
+	mu        sync.RWMutex
+	running   bool
 	startTime time.Time
-	
+
 	// Context for graceful shutdown
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -60,6 +63,33 @@ func (a *Agent) initializeServices() error {
 			return fmt.Errorf("failed to create sboxctl service: %w", err)
 		}
 		a.sboxctlService = sboxctlService
+	}
+
+	// Initialize CLI service if enabled
+	if a.config.Services.CLI.Enabled {
+		cliService, err := services.NewCLIService(a.config.Services.CLI, a.logger)
+		if err != nil {
+			return fmt.Errorf("failed to create CLI service: %w", err)
+		}
+		a.cliService = cliService
+	}
+
+	// Initialize systemd service if enabled
+	if a.config.Services.Systemd.Enabled {
+		systemdService, err := services.NewSystemdService(a.config.Services.Systemd, a.logger)
+		if err != nil {
+			return fmt.Errorf("failed to create systemd service: %w", err)
+		}
+		a.systemdService = systemdService
+	}
+
+	// Initialize monitor service if enabled
+	if a.config.Services.Monitoring.Enabled {
+		monitorService, err := services.NewMonitorService(a.config, a.logger)
+		if err != nil {
+			return fmt.Errorf("failed to create monitor service: %w", err)
+		}
+		a.monitorService = monitorService
 	}
 
 	return nil
@@ -114,6 +144,30 @@ func (a *Agent) startServices() error {
 		a.logger.Info("Sboxctl service started", map[string]interface{}{})
 	}
 
+	// Start CLI service
+	if a.cliService != nil {
+		if err := a.cliService.Start(a.ctx); err != nil {
+			return fmt.Errorf("failed to start CLI service: %w", err)
+		}
+		a.logger.Info("CLI service started", map[string]interface{}{})
+	}
+
+	// Start systemd service
+	if a.systemdService != nil {
+		if err := a.systemdService.Start(a.ctx); err != nil {
+			return fmt.Errorf("failed to start systemd service: %w", err)
+		}
+		a.logger.Info("Systemd service started", map[string]interface{}{})
+	}
+
+	// Start monitor service
+	if a.monitorService != nil {
+		if err := a.monitorService.Start(a.ctx); err != nil {
+			return fmt.Errorf("failed to start monitor service: %w", err)
+		}
+		a.logger.Info("Monitor service started", map[string]interface{}{})
+	}
+
 	return nil
 }
 
@@ -123,6 +177,24 @@ func (a *Agent) stopServices() {
 	if a.sboxctlService != nil {
 		a.sboxctlService.Stop()
 		a.logger.Info("Sboxctl service stopped", map[string]interface{}{})
+	}
+
+	// Stop CLI service
+	if a.cliService != nil {
+		a.cliService.Stop()
+		a.logger.Info("CLI service stopped", map[string]interface{}{})
+	}
+
+	// Stop systemd service
+	if a.systemdService != nil {
+		a.systemdService.Stop()
+		a.logger.Info("Systemd service stopped", map[string]interface{}{})
+	}
+
+	// Stop monitor service
+	if a.monitorService != nil {
+		a.monitorService.Stop()
+		a.logger.Info("Monitor service stopped", map[string]interface{}{})
 	}
 }
 
@@ -161,10 +233,22 @@ func (a *Agent) GetStatus() map[string]interface{} {
 		status["sboxctl"] = a.sboxctlService.GetStatus()
 	}
 
+	if a.cliService != nil {
+		status["cli"] = a.cliService.GetStatus()
+	}
+
+	if a.systemdService != nil {
+		status["systemd"] = a.systemdService.GetStatus()
+	}
+
+	if a.monitorService != nil {
+		status["monitor"] = a.monitorService.GetStatus()
+	}
+
 	return status
 }
 
 // GetConfig returns the current configuration
 func (a *Agent) GetConfig() *config.Config {
 	return a.config
-} 
+}

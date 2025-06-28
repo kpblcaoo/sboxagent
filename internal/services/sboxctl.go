@@ -6,13 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/kpblcaoo/sboxagent/internal/config"
 	"github.com/kpblcaoo/sboxagent/internal/logger"
+	"github.com/kpblcaoo/sboxagent/internal/utils"
 )
 
 // SboxctlEvent represents an event from sboxctl
@@ -27,17 +27,17 @@ type SboxctlEvent struct {
 type SboxctlService struct {
 	config config.SboxctlConfig
 	logger *logger.Logger
-	
+
 	// State
-	mu       sync.RWMutex
-	running  bool
-	lastRun  time.Time
+	mu        sync.RWMutex
+	running   bool
+	lastRun   time.Time
 	lastError error
-	
+
 	// Context for graceful shutdown
 	ctx    context.Context
 	cancel context.CancelFunc
-	
+
 	// Event handling
 	eventChan chan SboxctlEvent
 }
@@ -97,7 +97,7 @@ func (s *SboxctlService) Stop() {
 // run is the main service loop
 func (s *SboxctlService) run() {
 	// Parse interval
-	interval, err := parseDuration(s.config.Interval)
+	interval, err := utils.ParseDuration(s.config.Interval)
 	if err != nil {
 		s.logger.Error("Invalid interval format", map[string]interface{}{
 			"interval": s.config.Interval,
@@ -135,12 +135,13 @@ func (s *SboxctlService) executeSboxctl() {
 	})
 
 	// Parse timeout
-	timeout, err := parseDuration(s.config.Timeout)
+	timeout, err := utils.ParseDuration(s.config.Timeout)
 	if err != nil {
 		s.logger.Error("Invalid timeout format", map[string]interface{}{
 			"timeout": s.config.Timeout,
 			"error":   err.Error(),
 		})
+		s.setLastError(err)
 		return
 	}
 
@@ -193,8 +194,10 @@ func (s *SboxctlService) executeSboxctl() {
 
 // readStdout reads and processes stdout from sboxctl
 func (s *SboxctlService) readStdout(stdout interface{}) {
-	scanner := bufio.NewScanner(stdout.(interface{ Read(p []byte) (n int, err error) }))
-	
+	scanner := bufio.NewScanner(stdout.(interface {
+		Read(p []byte) (n int, err error)
+	}))
+
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
@@ -260,7 +263,7 @@ func (s *SboxctlService) handleEvent(event *SboxctlEvent) {
 
 // healthChecker runs periodic health checks
 func (s *SboxctlService) healthChecker() {
-	interval, err := parseDuration(s.config.HealthCheck.Interval)
+	interval, err := utils.ParseDuration(s.config.HealthCheck.Interval)
 	if err != nil {
 		s.logger.Error("Invalid health check interval", map[string]interface{}{
 			"interval": s.config.HealthCheck.Interval,
@@ -315,11 +318,11 @@ func (s *SboxctlService) GetStatus() map[string]interface{} {
 	defer s.mu.RUnlock()
 
 	status := map[string]interface{}{
-		"running":   s.running,
-		"lastRun":   s.lastRun,
-		"command":   s.config.Command,
-		"interval":  s.config.Interval,
-		"timeout":   s.config.Timeout,
+		"running":  s.running,
+		"lastRun":  s.lastRun,
+		"command":  s.config.Command,
+		"interval": s.config.Interval,
+		"timeout":  s.config.Timeout,
 	}
 
 	if s.lastError != nil {
@@ -333,33 +336,3 @@ func (s *SboxctlService) GetStatus() map[string]interface{} {
 func (s *SboxctlService) GetEventChannel() <-chan SboxctlEvent {
 	return s.eventChan
 }
-
-// parseDuration parses a duration string (e.g., "30m", "5m", "10s", "1m30s")
-func parseDuration(duration string) (time.Duration, error) {
-	if d, err := time.ParseDuration(duration); err == nil {
-		return d, nil
-	}
-	// Fallback: handle only pure integer + unit (legacy)
-	switch {
-	case strings.HasSuffix(duration, "s"):
-		val, err := strconv.Atoi(strings.TrimSuffix(duration, "s"))
-		if err != nil {
-			return 0, err
-		}
-		return time.Duration(val) * time.Second, nil
-	case strings.HasSuffix(duration, "m"):
-		val, err := strconv.Atoi(strings.TrimSuffix(duration, "m"))
-		if err != nil {
-			return 0, err
-		}
-		return time.Duration(val) * time.Minute, nil
-	case strings.HasSuffix(duration, "h"):
-		val, err := strconv.Atoi(strings.TrimSuffix(duration, "h"))
-		if err != nil {
-			return 0, err
-		}
-		return time.Duration(val) * time.Hour, nil
-	default:
-		return 0, fmt.Errorf("invalid duration: %s", duration)
-	}
-} 
